@@ -16,6 +16,11 @@ BUILDX_VERSION="${BUILDX_VERSION:-0.30.1}"
 COMPOSE_VERSION="${COMPOSE_VERSION:-2.40.3}"
 REPLACE_FIREWALLD="${REPLACE_FIREWALLD:-true}"   # firewalld -> iptables (аналог удаления ufw)
 DOCKER_USER="${DOCKER_USER:-${SUDO_USER:-}}"     # кого добавить в группу docker
+# Прокси для Docker: по умолчанию берётся из /etc/dnf/dnf.conf или переменной https_proxy.
+# Пусто = без прокси. Частные сети (внутренние адреса) идут напрямую.
+DNF_PROXY="$(sed -n 's/^proxy[[:space:]]*=[[:space:]]*//p' /etc/dnf/dnf.conf 2>/dev/null | head -1)"
+DOCKER_PROXY="${DOCKER_PROXY:-${https_proxy:-${HTTPS_PROXY:-$DNF_PROXY}}}"
+DOCKER_NO_PROXY="${DOCKER_NO_PROXY:-localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}"
 
 # ----------------------------- Служебное -------------------------------------
 log()  { echo -e "\n\033[1;32m==> $*\033[0m"; }
@@ -109,7 +114,19 @@ elif ! dnf -y install --setopt=install_weak_deps=False "${DOCKER_PKGS[@]}" conta
   grep -q '^exclude=' /etc/dnf/dnf.conf \
     || echo 'exclude=container-selinux docker-ce docker-ce-cli containerd.io' >> /etc/dnf/dnf.conf
 fi
-systemctl enable --now containerd docker
+if [[ -n "$DOCKER_PROXY" ]]; then
+  echo "Прокси для Docker: $DOCKER_PROXY"
+  mkdir -p /etc/systemd/system/docker.service.d
+  cat > /etc/systemd/system/docker.service.d/proxy.conf <<EOF
+[Service]
+Environment="HTTP_PROXY=${DOCKER_PROXY}"
+Environment="HTTPS_PROXY=${DOCKER_PROXY}"
+Environment="NO_PROXY=${DOCKER_NO_PROXY}"
+EOF
+  systemctl daemon-reload
+fi
+systemctl enable containerd docker
+systemctl restart containerd docker
 
 if [[ -n "$DOCKER_USER" && "$DOCKER_USER" != "root" ]]; then
   usermod -aG docker "$DOCKER_USER"
@@ -177,6 +194,7 @@ log "Готово. Установленные версии:"
 docker --version
 docker buildx version
 docker compose version
+docker info 2>/dev/null | grep -i proxy || echo "Docker работает без прокси"
 "/usr/pgsql-${PG_VERSION}/bin/psql" --version
 systemctl is-active docker "postgresql-${PG_VERSION}"
 warn "Перезагрузите сервер (reboot), чтобы SELinux отключился полностью"
