@@ -20,3 +20,4 @@ curl -sI http://192.168.48.93/Integration/odata | head -3
 DOTNET_SYSTEM_NET_HTTP_USEPROXY=false ./DirectumLauncher --host=192.168.48.93 --port=5000
 
 grep -ri proxy /opt/AdamsLinuxServer/dir-rx/etc/ 2>/dev/null | head
+curl -si -u 'Service User:Qwerty$adams16092026' 'http://192.168.48.93/Integration/odata/$metadata' | head -3
