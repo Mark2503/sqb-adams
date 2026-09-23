@@ -6,7 +6,13 @@ systemctl restart docker
 
 grep -rl proxy /etc/environment /etc/profile.d/ /root/.bashrc /root/.bash_profile 2>/dev/null
 
-cat >> /etc/environment <<EOF
-no_proxy=localhost,127.0.0.1,::1,192.168.48.93,.uzpsb.local
-NO_PROXY=localhost,127.0.0.1,::1,192.168.48.93,.uzpsb.local
+cat >> /etc/profile.d/proxy.sh <<EOF
+export no_proxy="localhost,127.0.0.1,::1,192.168.48.93,.uzpsb.local"
+export NO_PROXY="\$no_proxy"
 EOF
+
+cat /etc/profile.d/proxy.sh
+
+source /etc/profile.d/proxy.sh
+env | grep -i proxy
+curl -sI http://192.168.48.93/Integration/odata | head -3
