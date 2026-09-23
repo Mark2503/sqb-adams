@@ -17,4 +17,4 @@ source /etc/profile.d/proxy.sh
 env | grep -i proxy
 curl -sI http://192.168.48.93/Integration/odata | head -3
 
-curl -sI http://192.168.48.93/Integration/odata | head -5
+DOTNET_SYSTEM_NET_HTTP_USEPROXY=false ./DirectumLauncher --host=192.168.48.93 --port=5000
