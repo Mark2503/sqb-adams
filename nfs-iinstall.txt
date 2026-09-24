@@ -1,5 +1,18 @@
 cd /tmp/nfs-rpm
 rpm -Uvh --nodeps *.rpm
+
+dnf -y install --setopt=install_weak_deps=False rpcbind
+ls /tmp/nfs-rpm/rpcbind*
+rpm -Uvh --nodeps /tmp/nfs-rpm/rpcbind*.rpm
+systemctl enable --now nfs-server
+exportfs -rav
+
+rpm -q nfs-utils rpcbind
+systemctl is-active nfs-server
+exportfs -v
+ss -tlnp | grep 2049
+ls -ld /srv/es-data
+
 grep -q '^exclude=' /etc/dnf/dnf.conf || echo 'exclude=sssd-nfs-idmap' >> /etc/dnf/dnf.conf
 mkdir -p /srv/es-data
 chown 1000:1000 /srv/es-data
