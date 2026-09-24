@@ -1,0 +1,23 @@
+cd /tmp/nfs-rpm
+rpm -Uvh --nodeps *.rpm
+grep -q '^exclude=' /etc/dnf/dnf.conf || echo 'exclude=sssd-nfs-idmap' >> /etc/dnf/dnf.conf
+mkdir -p /srv/es-data
+chown 1000:1000 /srv/es-data
+chmod 0775 /srv/es-data
+grep -q '/srv/es-data' /etc/exports || echo '/srv/es-data 192.168.48.0/24(rw,sync,no_subtree_check,no_root_squash)' >> /etc/exports
+systemctl enable --now rpcbind nfs-server
+exportfs -rav
+
+rpm -q nfs-utils
+systemctl is-active nfs-server
+exportfs -v
+ss -tlnp | grep 2049
+showmount -e localhost
+ls -ld /srv/es-data
+
+dnf -y install --setopt=install_weak_deps=False nfs-utils
+mkdir -p /mnt/es-data
+echo '192.168.48.XX:/srv/es-data /mnt/es-data nfs4 defaults,_netdev,hard,timeo=600,retrans=2 0 0' >> /etc/fstab
+mount -a
+df -h /mnt/es-data
+touch /mnt/es-data/test.txt && ls -l /mnt/es-data/ && rm /mnt/es-data/test.txt
