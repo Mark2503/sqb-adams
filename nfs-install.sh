@@ -41,7 +41,18 @@ fi
 
 # ----------------------------- 3. Пакеты -------------------------------------
 log "3. Установка nfs-utils"
-dnf -y install nfs-utils
+# sssd-nfs-idmap нужен только для сопоставления имён через SSSD и в зеркале клиента
+# отсутствует, поэтому сначала пробуем без необязательных зависимостей.
+if ! dnf -y install --setopt=install_weak_deps=False nfs-utils; then
+  warn "dnf не смог установить nfs-utils — ставлю пакеты через rpm --nodeps"
+  mkdir -p /tmp/nfs-rpm
+  dnf download --resolve --alldeps --destdir /tmp/nfs-rpm \
+    --exclude=sssd-nfs-idmap nfs-utils || true
+  ls /tmp/nfs-rpm/*.rpm >/dev/null 2>&1 || die "Не удалось скачать пакеты nfs-utils"
+  rpm -Uvh --nodeps /tmp/nfs-rpm/*.rpm
+  grep -q '^exclude=' /etc/dnf/dnf.conf \
+    || echo 'exclude=sssd-nfs-idmap' >> /etc/dnf/dnf.conf
+fi
 
 # ----------------------------- 4. Каталог ------------------------------------
 log "4. Каталог $ES_DIR"
